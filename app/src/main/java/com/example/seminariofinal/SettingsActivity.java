@@ -1,25 +1,26 @@
 package com.example.seminariofinal; // <-- Debe decir EXACTAMENTE esto
 
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
-import androidx.security.crypto.EncryptedSharedPreferences;
-import androidx.security.crypto.MasterKey;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import com.google.android.material.appbar.MaterialToolbar;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private SwitchCompat switchSecurityLevel;
-    private TextView tvFullPublicKey;
-    private String fullPublicKey = "";
+    // Componentes adaptados de la vista web
+    private SwitchCompat switchEphemeralSession;
+    private SwitchCompat switchReadReceipts;
+    private SwitchCompat switchAppSounds;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,53 +28,91 @@ public class SettingsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_settings);
 
         MaterialToolbar toolbar = findViewById(R.id.toolbarSettings);
+
+        // CORRECCIÓN PARA EL TÍTULO: Se asigna directamente al componente antes del soporte
+        toolbar.setTitle("Ajustes y Seguridad");
+        setSupportActionBar(toolbar);
+
+        // Activa la flecha de retroceso física en la interfaz
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            // Refuerzo en caso de que el tema intente borrarlo
+            getSupportActionBar().setTitle("Ajustes y Seguridad");
+        }
+
+        // Fuerza el color verde claro (#4CAF50) usando DrawableCompat
+        Drawable navigationIcon = toolbar.getNavigationIcon();
+        if (navigationIcon != null) {
+            Drawable wrappedIcon = DrawableCompat.wrap(navigationIcon);
+            DrawableCompat.setTintList(wrappedIcon, ColorStateList.valueOf(Color.parseColor("#4CAF50")));
+            toolbar.setNavigationIcon(wrappedIcon);
+        }
+
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        switchSecurityLevel = findViewById(R.id.switchSecurityLevel);
-        tvFullPublicKey = findViewById(R.id.tvFullPublicKey);
+        // Vinculación de los componentes de la vista web
+        switchEphemeralSession = findViewById(R.id.switchEphemeralSession);
+        switchReadReceipts = findViewById(R.id.switchReadReceipts);
+        switchAppSounds = findViewById(R.id.switchAppSounds);
 
+        // Cargar ajustes almacenados
         loadSettings();
 
-        // Guardar cambio de nivel de seguridad
-        switchSecurityLevel.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            int level = isChecked ? 1 : 0;
-            getSharedPreferences("starssenger_prefs", Context.MODE_PRIVATE)
-                    .edit()
-                    .putInt("security_level", level)
-                    .apply();
+        // ==========================================
+        // LISTENERS (Equivalentes a JS en la Web)
+        // ==========================================
+
+        SharedPreferences prefs = getSharedPreferences("starssenger_prefs", Context.MODE_PRIVATE);
+
+        // 1. Sesión Efímera
+        switchEphemeralSession.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("app_ephemeral_session", isChecked).apply();
+            Toast.makeText(this, "Preferencia de sesión actualizada ⏳", Toast.LENGTH_SHORT).show();
         });
 
-        // Copiar clave pública completa
-        findViewById(R.id.btnCopyKey).setOnClickListener(v -> {
-            if (!fullPublicKey.isEmpty()) {
-                ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                if (cb != null) {
-                    cb.setPrimaryClip(ClipData.newPlainText("Clave Pública", fullPublicKey));
-                    Toast.makeText(this, "Clave pública copiada 📋", Toast.LENGTH_SHORT).show();
-                }
-            }
+        // 2. Confirmación de Lectura
+        switchReadReceipts.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("app_read_receipts", isChecked).apply();
+            Toast.makeText(this, "Confirmación de lectura modificada ✔️", Toast.LENGTH_SHORT).show();
+        });
+
+        // 3. Efectos de Sonido
+        switchAppSounds.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("app_sounds", isChecked).apply();
+            Toast.makeText(this, "Configuración de audio guardada 🔊", Toast.LENGTH_SHORT).show();
+        });
+
+        // 4. Botón de Restablecimiento de fábrica local (btnResetPreferences)
+        findViewById(R.id.btnResetPreferences).setOnClickListener(v -> {
+            new AlertDialog.Builder(this)
+                    .setTitle("Restaurar ajustes")
+                    .setMessage("¿Querés restaurar los ajustes por defecto de la aplicación?")
+                    .setPositiveButton("Sí, restaurar", (dialog, which) -> {
+                        // Valores por defecto
+                        prefs.edit()
+                                .putBoolean("app_ephemeral_session", false)
+                                .putBoolean("app_read_receipts", true)
+                                .putBoolean("app_sounds", true)
+                                .apply();
+
+                        // Actualizar la UI en consecuencia
+                        switchEphemeralSession.setChecked(false);
+                        switchReadReceipts.setChecked(true);
+                        switchAppSounds.setChecked(true);
+
+                        Toast.makeText(this, "Ajustes restaurados por defecto 🔄", Toast.LENGTH_SHORT).show();
+                    })
+                    .setNegativeButton("Cancelar", null)
+                    .show();
         });
     }
 
     private void loadSettings() {
         SharedPreferences prefs = getSharedPreferences("starssenger_prefs", Context.MODE_PRIVATE);
-        int secLevel = prefs.getInt("security_level", 0);
-        switchSecurityLevel.setChecked(secLevel == 1);
 
-        new Thread(() -> {
-            try {
-                MasterKey mk = new MasterKey.Builder(this).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build();
-                SharedPreferences securePrefs = EncryptedSharedPreferences.create(
-                        this, "starssenger_secure_prefs", mk,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                );
-
-                fullPublicKey = securePrefs.getString("public_key", "No generada");
-                runOnUiThread(() -> tvFullPublicKey.setText(fullPublicKey));
-            } catch (Exception e) {
-                runOnUiThread(() -> tvFullPublicKey.setText("Error al cargar la clave"));
-            }
-        }).start();
+        // Cargas iniciales mapeando los valores por defecto del LocalStorage
+        switchEphemeralSession.setChecked(prefs.getBoolean("app_ephemeral_session", false)); // false por defecto
+        switchReadReceipts.setChecked(prefs.getBoolean("app_read_receipts", true));         // true por defecto
+        switchAppSounds.setChecked(prefs.getBoolean("app_sounds", true));                 // true por defecto
     }
 }

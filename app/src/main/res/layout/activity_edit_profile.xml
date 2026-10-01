@@ -16,39 +16,160 @@
         app:title="Editar Perfil"
         app:titleTextColor="@color/white" />
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:fillViewport="true">
 
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Número de Teléfono"
-            android:textColor="@color/mut_text"
-            android:textSize="14sp" />
+            android:orientation="vertical"
+            android:padding="24dp">
 
-        <EditText
-            android:id="@+id/etUserPhone"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/bg_input_dark"
-            android:hint="+54 9 11 1234-5678"
-            android:inputType="phone"
-            android:paddingHorizontal="16dp"
-            android:textColor="@color/white"
-            android:textColorHint="@color/mut_text" />
+            <!-- Avatar Grande -->
+            <TextView
+                android:id="@+id/tvProfAv"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="24dp"
+                android:gravity="center"
+                android:text="👤"
+                android:textSize="56sp" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSavePhone"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_marginTop="24dp"
-            android:text="Guardar Cambios"
-            android:textColor="@color/white"
-            app:cornerRadius="8dp" />
+            <!-- Entrada Teléfono -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Tu número (con código de país)"
+                android:textColor="@color/mut_text"
+                android:textSize="14sp" />
 
-    </LinearLayout>
+            <EditText
+                android:id="@+id/etUserPhone"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_input_dark"
+                android:hint="+54 9 11 1234-5678"
+                android:inputType="phone"
+                android:paddingHorizontal="16dp"
+                android:textColor="@color/white"
+                android:textColorHint="@color/mut_text" />
+
+            <!-- Clave Pública (Libsodium) -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Tu Clave Pública (Libsodium / X25519)"
+                android:textColor="@color/mut_text"
+                android:textSize="14sp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/etPubKeyDisplay"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_input_dark"
+                    android:editable="false"
+                    android:focusable="false"
+                    android:hint="Cargando clave..."
+                    android:inputType="text"
+                    android:paddingHorizontal="16dp"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/mut_text"
+                    android:textSize="12sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCopyKey"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:text="📋"
+                    android:textColor="@color/white"
+                    app:backgroundTint="@color/navy"
+                    app:cornerRadius="8dp"
+                    app:strokeColor="@color/mut_text"
+                    app:strokeWidth="1dp" />
+            </LinearLayout>
+
+            <!-- Seguridad -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Seguridad"
+                android:textColor="@color/mut_text"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/toggleGroupSecurity"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:singleSelection="true"
+                app:selectionRequired="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSecNormal"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="🔓 Normal"
+                    android:textColor="@color/white"
+                    app:strokeColor="@color/mut_text" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSecBlindado"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="50dp"
+                    android:layout_weight="1"
+                    android:text="🛡️ Blindado"
+                    android:textColor="@color/white"
+                    app:strokeColor="@color/mut_text" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <!-- Texto informativo dinámico de Blindado -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="🛡️ Blindado: los mensajes se borran solos a los 45s y no se guarda nada en el teléfono."
+                android:textColor="@color/mut_text"
+                android:textSize="12sp" />
+
+            <!-- Guardar -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSavePhone"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="24dp"
+                android:text="Guardar Cambios 💾"
+                android:textColor="@color/white"
+                app:backgroundTint="@color/green_accent"
+                app:cornerRadius="8dp" />
+
+            <!-- Footer Informativo -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:gravity="center"
+                android:text="🔐 Mensajería cifrada extremo a extremo con Libsodium (X25519/XSalsa20-Poly1305). Tu clave privada nunca sale del teléfono."
+                android:textColor="@color/mut_text"
+                android:textSize="11sp" />
+
+        </LinearLayout>
+    </ScrollView>
 </LinearLayout>
