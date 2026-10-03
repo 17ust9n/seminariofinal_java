@@ -4,13 +4,12 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.Gravity;
-import android.content.res.ColorStateList;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -112,6 +111,7 @@ public class NewChatActivity extends AppCompatActivity {
         });
         rvNcList.setAdapter(adapter);
     }
+
     private void setupListeners() {
         toolbarNewChat.setNavigationOnClickListener(v -> {
             hideKeyboard();
@@ -229,7 +229,6 @@ public class NewChatActivity extends AppCompatActivity {
         dialog.show();
     }
 
-
     private void setupMemberCheckbox(CheckBox cb, LinearLayout actionsLayout) {
         if (actionsLayout != null) {
             // Ocultamos solo lo que NO es el checkbox (por ej. botones editar/borrar)
@@ -258,7 +257,6 @@ public class NewChatActivity extends AppCompatActivity {
         }
     }
 
-
     private String cleanPhone(String p) {
         return p == null ? "" : p.replaceAll("\\D", "");
     }
@@ -276,7 +274,6 @@ public class NewChatActivity extends AppCompatActivity {
         }
         return false;
     }
-
 
     private void openEditContactModal(Contact contact) {
         Dialog dialog = createStyledDialog(R.layout.dialog_add_contact);
@@ -534,6 +531,8 @@ public class NewChatActivity extends AppCompatActivity {
 
                     notifyItemChanged(position);
                     tvCounterLabel.setText("Miembros del Grupo (" + temporaryMembers.size() + " seleccionados)");
+                    // Si había un error marcado en rojo, volvemos al color normal
+                    tvCounterLabel.setTextColor(ContextCompat.getColor(ctx, R.color.green_accent));
                 };
 
                 holder.itemView.setOnClickListener(toggleListener);
@@ -552,10 +551,27 @@ public class NewChatActivity extends AppCompatActivity {
         builder.setTitle("Modificar Grupo 👥");
         builder.setView(modalLayout);
 
-        builder.setPositiveButton("Guardar cambios 💾", (dialog, which) -> {
+        // El listener real se asigna después de show() para poder evitar que el diálogo se cierre solo
+        builder.setPositiveButton("Guardar cambios 💾", null);
+        builder.setNegativeButton("Cancelar", null);
+
+        AlertDialog alertDialog = builder.create();
+        if (alertDialog.getWindow() != null) {
+            alertDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#0b141a")));
+        }
+        alertDialog.show();
+
+        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
             String updatedName = etGroupNameInput.getText().toString().trim();
+
             if (updatedName.isEmpty()) {
                 Toast.makeText(ctx, "Por favor, ingresá un nombre válido para el grupo.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            if (temporaryMembers.isEmpty()) {
+                tvCounterLabel.setTextColor(Color.parseColor("#e05a5a"));
+                Toast.makeText(ctx, "Seleccioná al menos un miembro para el grupo", Toast.LENGTH_SHORT).show();
                 return;
             }
 
@@ -581,15 +597,8 @@ public class NewChatActivity extends AppCompatActivity {
 
             renderGroups();
             Toast.makeText(ctx, "Grupo modificado correctamente 💾.", Toast.LENGTH_SHORT).show();
+            alertDialog.dismiss();
         });
-
-        builder.setNegativeButton("Cancelar", null);
-
-        AlertDialog alertDialog = builder.create();
-        if (alertDialog.getWindow() != null) {
-            alertDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#0b141a")));
-        }
-        alertDialog.show();
     }
 
     private void confirmDeleteGroup(Group group) {
@@ -630,6 +639,11 @@ public class NewChatActivity extends AppCompatActivity {
         Button btnCancel = dialog.findViewById(R.id.btnCancelCreateGroup);
         Button btnSave = dialog.findViewById(R.id.btnSaveCreateGroup);
 
+        // Guardamos el color original del contador para restaurarlo luego de un error
+        final int counterOriginalColor = tvCounterLabel != null
+                ? tvCounterLabel.getCurrentTextColor()
+                : ContextCompat.getColor(this, R.color.green_accent);
+
         if (rvModalList != null) {
             rvModalList.setLayoutManager(new LinearLayoutManager(this));
 
@@ -657,7 +671,7 @@ public class NewChatActivity extends AppCompatActivity {
                         tvAvatar.setTextColor(ContextCompat.getColor(NewChatActivity.this, R.color.green_accent));
                         tvAvatar.setBackground(null);
                     }
-// 🛠️ SOLUCIÓN CON DOBLE BARRA INVERTIDA PARA EVITAR EL ILLEGAL ESCAPE CHARACTER
+
                     final String targetCleanPhone = contact.getPhone() != null ? contact.getPhone().replaceAll("\\D", "") : "";
 
                     boolean isChecked = false;
@@ -688,6 +702,8 @@ public class NewChatActivity extends AppCompatActivity {
                         notifyItemChanged(position);
                         if (tvCounterLabel != null) {
                             tvCounterLabel.setText("Seleccionar Miembros (" + selectedMembers.size() + " seleccionados)");
+                            // Si había un error marcado en rojo, volvemos al color original
+                            tvCounterLabel.setTextColor(counterOriginalColor);
                         }
                     };
                     holder.itemView.setOnClickListener(toggleListener);
@@ -707,15 +723,24 @@ public class NewChatActivity extends AppCompatActivity {
                     Toast.makeText(this, "Completa el nombre del grupo", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                if (selectedMembers.isEmpty()) {
+                    if (tvCounterLabel != null) {
+                        tvCounterLabel.setTextColor(Color.parseColor("#e05a5a"));
+                    }
+                    Toast.makeText(this, "Seleccioná al menos un miembro para el grupo", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 saveNewGroupToPrefs(groupName, selectedMembers);
                 dialog.dismiss();
             });
         }
         dialog.show();
     }
+
     private SharedPreferences getGetPreferencesShared() {
         return getSharedPreferences("starssenger_prefs", MODE_PRIVATE);
     }
+
     private void saveContact(String name, String num, String pubKey) {
         Contact newContact = new Contact(name, num, pubKey);
         contactList.add(newContact);
@@ -723,9 +748,11 @@ public class NewChatActivity extends AppCompatActivity {
         renderNewChat(etNcSearch.getText().toString());
         Toast.makeText(this, "Contacto guardado correctamente", Toast.LENGTH_SHORT).show();
     }
+
     private boolean isValidSodiumKey(String key) {
         return key != null && key.length() == 64 && key.matches("^[0-9a-fA-F]+$");
     }
+
     private Dialog createStyledDialog(int layoutResId) {
         Dialog dialog = new Dialog(this);
         dialog.setContentView(layoutResId);
@@ -735,6 +762,7 @@ public class NewChatActivity extends AppCompatActivity {
         }
         return dialog;
     }
+
     private void hideKeyboard() {
         View view = this.getCurrentFocus();
         if (view != null) {
