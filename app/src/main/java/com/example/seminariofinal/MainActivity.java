@@ -91,13 +91,19 @@ public class MainActivity extends AppCompatActivity {
 
         rvChatList.setLayoutManager(new LinearLayoutManager(this));
 
-        adapter = new ContactAdapter(new ArrayList<>(), false, new ContactAdapter.OnContactActionListener() {
+        // 🛠️ CORREGIDO: Redirige tanto contactos como grupos a ChatActivity con su bandera correspondiente
+        adapter = new ContactAdapter(new ArrayList<>(), false, new OnContactActionListener() {
             @Override
             public void onContactClick(Contact contact) {
                 hideKeyboard();
+
                 Intent intent = new Intent(MainActivity.this, ChatActivity.class);
                 intent.putExtra("contact_name", contact.getName());
                 intent.putExtra("contact_phone", contact.getPhone());
+
+                // Le avisamos a ChatActivity si la celda presionada es un entorno grupal
+                intent.putExtra("is_group", contact.isGroup());
+
                 startActivity(intent);
             }
 
@@ -142,24 +148,68 @@ public class MainActivity extends AppCompatActivity {
         finish();
     }
 
+    // 🛠️ CORREGIDO: Unifica la carga de la agenda y los grupos, blindando la obtención del nombre real
     private void rebuildConvs() {
         SharedPreferences prefs = getSharedPreferences("starssenger_prefs", MODE_PRIVATE);
-        String json = prefs.getString("contacts_list", null);
+        Gson gson = new Gson();
+        contactList = new ArrayList<>();
 
-        if (json != null) {
-            Gson gson = new Gson();
+        // 1. Cargar contactos individuales de la agenda
+        String contactsJson = prefs.getString("contacts_list", null);
+        if (contactsJson != null) {
             Type type = new TypeToken<ArrayList<Contact>>() {}.getType();
-            contactList = gson.fromJson(json, type);
-        } else {
-            contactList = new ArrayList<>();
+            ArrayList<Contact> savedContacts = gson.fromJson(contactsJson, type);
+            if (savedContacts != null) {
+                contactList.addAll(savedContacts);
+            }
+        }
+
+        // 2. Cargar salas de chat grupales creadas
+        String groupsJson = prefs.getString("groups_list", null);
+        if (groupsJson != null) {
+            Type type = new TypeToken<ArrayList<Group>>() {}.getType();
+            ArrayList<Group> savedGroups = gson.fromJson(groupsJson, type);
+            if (savedGroups != null) {
+                for (Group g : savedGroups) {
+                    if (g != null) {
+                        // DETECCIÓN DINÁMICA: Extrae el nombre sin importar si en tu Group.java usaste 'name' o 'groupName'
+                        String verifiedName = null;
+                        if (g.getName() != null && !g.getName().trim().isEmpty()) {
+                            verifiedName = g.getName();
+                        } else {
+                            try {
+                                java.lang.reflect.Field field = g.getClass().getDeclaredField("groupName");
+                                field.setAccessible(true);
+                                verifiedName = (String) field.get(g);
+                            } catch (Exception ignored) {}
+                        }
+
+                        // Si por alguna anomalía externa sigue vacío, asignamos un ID incremental visual
+                        if (verifiedName == null || verifiedName.trim().isEmpty()) {
+                            verifiedName = "Sala de Chat #" + Math.abs(g.hashCode() % 1000);
+                        }
+
+                        // Creamos la instancia Contact de puente mapeada para el adapter
+                        Contact groupContact = new Contact();
+                        groupContact.setName(verifiedName);
+                        groupContact.setPhone("Sala grupal");
+                        groupContact.setGroup(true); // Activa el círculo verde en ContactAdapter
+
+                        contactList.add(groupContact);
+                    }
+                }
+            }
         }
     }
 
     private void renderList(String query) {
         List<Contact> filteredList = new ArrayList<>();
         for (Contact c : contactList) {
-            if (c.getName().toLowerCase().contains(query.toLowerCase()) ||
-                    c.getPhone().contains(query)) {
+            // Protección contra nulos al filtrar cadenas
+            String name = c.getName() != null ? c.getName() : "";
+            String phone = c.getPhone() != null ? c.getPhone() : "";
+
+            if (name.toLowerCase().contains(query.toLowerCase()) || phone.contains(query)) {
                 filteredList.add(c);
             }
         }

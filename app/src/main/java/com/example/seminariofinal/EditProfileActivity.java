@@ -20,6 +20,7 @@ import java.security.KeyPairGenerator;
 
 public class EditProfileActivity extends AppCompatActivity {
 
+    private EditText etUserName;
     private EditText etUserPhone;
     private EditText etPubKeyDisplay;
     private MaterialButtonToggleGroup toggleGroupSecurity;
@@ -41,13 +42,15 @@ public class EditProfileActivity extends AppCompatActivity {
         toolbar.setNavigationOnClickListener(v -> finish());
 
         // Campos e Inputs
+        etUserName = findViewById(R.id.etUserName);
         etUserPhone = findViewById(R.id.etUserPhone);
         etPubKeyDisplay = findViewById(R.id.etPubKeyDisplay);
         toggleGroupSecurity = findViewById(R.id.toggleGroupSecurity);
         btnSecNormal = findViewById(R.id.btnSecNormal);
         btnSecBlindado = findViewById(R.id.btnSecBlindado);
 
-        // Cargar número actual e inicializar modo seguro
+        // Cargar nombre y número actuales e inicializar modo seguro
+        etUserName.setText(prefs.getString("user_name", ""));
         etUserPhone.setText(prefs.getString("user_phone", ""));
         currentSecureMode = prefs.getInt("sp_secure", 0);
         setupSecurityToggle(currentSecureMode);
@@ -105,7 +108,19 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void saveProfile() {
+        String name = etUserName.getText().toString().trim();
         String rawPhone = etUserPhone.getText().toString().trim();
+
+        if (name.isEmpty()) {
+            etUserName.setError("Ingresa tu nombre");
+            return;
+        }
+
+        if (name.length() < 2) {
+            etUserName.setError("El nombre es muy corto");
+            return;
+        }
+
         if (rawPhone.isEmpty()) {
             etUserPhone.setError("Ingresa un número válido");
             return;
@@ -115,6 +130,7 @@ public class EditProfileActivity extends AppCompatActivity {
         String cleanPhone = rawPhone.replaceAll("\\D", "");
 
         prefs.edit()
+                .putString("user_name", name)
                 .putString("user_phone", cleanPhone)
                 .putInt("sp_secure", currentSecureMode)
                 .apply();

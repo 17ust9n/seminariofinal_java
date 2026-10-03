@@ -139,6 +139,34 @@
             </LinearLayout>
 
         </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- 🛠️ CORRECCIÓN DE JERARQUÍA VISUAL: Se movió la sección de grupos activos aquí afuera -->
+    <!-- Esto asegura que las celdas horizontales de los grupos aprovechen el ancho completo simétrico -->
+    <LinearLayout
+        android:id="@+id/llGroupsSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="6dp"
+            android:text="GRUPOS ACTIVOS"
+            android:textColor="@color/green_accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/llGroupsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
     </LinearLayout>
 
     <!-- Subtítulo de sección -->

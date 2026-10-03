@@ -74,11 +74,13 @@ public class ProfileActivity extends AppCompatActivity {
         // 1. Datos generales de preferencias comunes
         SharedPreferences preferences = getSharedPreferences("starssenger_prefs", Context.MODE_PRIVATE);
 
+        String userName = preferences.getString("user_name", "");
         String userPhone = preferences.getString("user_phone", "Sin número");
         int secLevel = preferences.getInt("security_level", 0);
         String secLabel = (secLevel == 1) ? "Modo Blindado 🛡️" : "Modo Normal ⚡";
 
-        tvUserName.setText(userPhone);
+        // Arriba va el nombre. Si no existe (usuarios creados antes del cambio), se muestra el teléfono.
+        tvUserName.setText(userName.isEmpty() ? userPhone : userName);
 
         // 2. Leer o generar par de claves Curve25519 con Libsodium en EncryptedSharedPreferences
         try {
@@ -94,18 +96,19 @@ public class ProfileActivity extends AppCompatActivity {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
 
+            // Mismo nombre de clave que usa OnboardingActivity: "secret_key"
             myPublicKeyHex = securePrefs.getString("public_key", null);
-            String privateKeyHex = securePrefs.getString("private_key", null);
+            String secretKeyHex = securePrefs.getString("secret_key", null);
 
-            // Generar par de claves con Libsodium si aún no existen
-            if (myPublicKeyHex == null || privateKeyHex == null) {
+            // Generar par de claves con Libsodium solo si aún no existen
+            if (myPublicKeyHex == null || secretKeyHex == null) {
                 KeyPair keyPair = sodium.cryptoBoxKeypair();
                 myPublicKeyHex = keyPair.getPublicKey().getAsHexString();
-                privateKeyHex = keyPair.getSecretKey().getAsHexString();
+                secretKeyHex = keyPair.getSecretKey().getAsHexString();
 
                 securePrefs.edit()
                         .putString("public_key", myPublicKeyHex)
-                        .putString("private_key", privateKeyHex)
+                        .putString("secret_key", secretKeyHex)
                         .apply();
             }
 
@@ -114,12 +117,13 @@ public class ProfileActivity extends AppCompatActivity {
                     ? myPublicKeyHex.substring(0, 8) + "..." + myPublicKeyHex.substring(myPublicKeyHex.length() - 8)
                     : myPublicKeyHex;
 
-            String subtext = secLabel + "\nClave Pública (Toca para copiar):\n" + shortKey;
+            // Abajo va el número, el modo de seguridad y la clave pública
+            String subtext = userPhone + "\n" + secLabel + "\nClave Pública (Toca para copiar):\n" + shortKey;
             tvUserEmail.setText(subtext);
 
         } catch (Exception e) {
             e.printStackTrace();
-            tvUserEmail.setText(secLabel + "\nError al cargar identidad Libsodium");
+            tvUserEmail.setText(userPhone + "\n" + secLabel + "\nError al cargar identidad Libsodium");
         }
     }
 

@@ -1,18 +1,19 @@
 package com.example.seminariofinal;
 
 import android.Manifest;
-import com.goterl.lazysodium.interfaces.Box;
-import com.goterl.lazysodium.utils.Key;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,6 +28,8 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.goterl.lazysodium.LazySodiumAndroid;
+import com.goterl.lazysodium.interfaces.Box;
+import com.goterl.lazysodium.utils.Key;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -53,6 +56,10 @@ public class ChatActivity extends AppCompatActivity {
     private String audioFilePath;
     private boolean isRecording = false;
     private String contactPhone = "";
+
+    // Datos de grupo
+    private boolean isGroup = false;
+    private String groupName = "";
 
     // Variables criptográficas
     private String contactPublicKeyHex = "";
@@ -96,78 +103,241 @@ public class ChatActivity extends AppCompatActivity {
 
             mySecretKeyHex = securePrefs.getString("secret_key", "");
             myPublicKeyHex = securePrefs.getString("public_key", "");
+
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     * Clave con la que se guardan los mensajes:
+     * el teléfono si es individual,
+     * o "group_<nombre>" si es un grupo.
+     */
+    private String chatKey() {
+        if (isGroup) {
+            return (groupName == null || groupName.isEmpty())
+                    ? ""
+                    : "group_" + groupName;
+        }
+
+        return contactPhone == null ? "" : contactPhone;
+    }
+
     private void getIntentData() {
-        if (getIntent() != null) {
-            String name = getIntent().getStringExtra("contact_name");
+
+        if (getIntent() == null) return;
+
+        isGroup = getIntent().getBooleanExtra("is_group", false);
+
+        if (isGroup) {
+            // 🛠️ SOLUCIÓN DEFINTIVA: Cambiado "group_name" por "contact_name" para acoplar con Main y NewChat
+            groupName = getIntent().getStringExtra("contact_name");
+
+            if (groupName == null || groupName.trim().isEmpty()) {
+                groupName = "Grupo sin nombre";
+            }
+
+            // Mapeamos también el texto de "Sala grupal" para evitar descalces en variables de control secundarias
             contactPhone = getIntent().getStringExtra("contact_phone");
-            contactPublicKeyHex = getIntent().getStringExtra("contact_public_key");
-
-            if (name != null && !name.trim().isEmpty()) {
-                tvChName.setText(name);
-
-                // Asignar primera letra en mayúscula al avatar
-                String initial = name.trim().substring(0, 1).toUpperCase();
-                if (tvChAv != null) {
-                    tvChAv.setText(initial);
-                }
-            } else {
-                tvChName.setText("Usuario");
-                if (tvChAv != null) {
-                    tvChAv.setText("U");
-                }
+            if (contactPhone == null) {
+                contactPhone = "Sala grupal";
             }
 
-            if (contactPhone != null && !contactPhone.isEmpty()) {
-                tvChSub.setText(contactPhone);
+            setupGroupHeader();
+            return;
+        }
+
+        String name = getIntent().getStringExtra("contact_name");
+
+        contactPhone = getIntent().getStringExtra("contact_phone");
+
+        contactPublicKeyHex =
+                getIntent().getStringExtra("contact_public_key");
+
+        if (name != null && !name.trim().isEmpty()) {
+
+            tvChName.setText(name);
+
+            String initial =
+                    name.trim()
+                            .substring(0, 1)
+                            .toUpperCase();
+
+            if (tvChAv != null) {
+                tvChAv.setText(initial);
             }
+
+        } else {
+
+            tvChName.setText("Usuario");
+
+            if (tvChAv != null) {
+                tvChAv.setText("U");
+            }
+        }
+
+        if (contactPhone != null && !contactPhone.isEmpty()) {
+            tvChSub.setText(contactPhone);
         }
     }
 
+
+    /**
+     * Header de grupo.
+     */
+    private void setupGroupHeader() {
+
+        tvChName.setText(
+                groupName.isEmpty()
+                        ? "Grupo sin nombre"
+                        : groupName
+        );
+
+        if (tvChAv != null) {
+            tvChAv.setText("👥");
+            tvChAv.setBackgroundResource(
+                    R.drawable.bg_avatar_circle
+            );
+        }
+
+        int count = 0;
+
+        for (Group g : GroupRepository.load(this)) {
+
+            if (groupName.equals(g.getName())) {
+
+                count = (g.getMembers() != null)
+                        ? g.getMembers().size()
+                        : 0;
+
+                break;
+            }
+        }
+
+        tvChSub.setText(count + " miembro(s)");
+
+        View.OnClickListener openDetail =
+                v -> openGroupDetail();
+
+        if (tvChAv != null) {
+            tvChAv.setOnClickListener(openDetail);
+        }
+
+        tvChName.setOnClickListener(openDetail);
+        tvChSub.setOnClickListener(openDetail);
+
+        etTxt.setHint("Mensaje grupal…");
+    }
+
+    private void openGroupDetail() {
+
+        Intent intent =
+                new Intent(this, GroupActivity.class);
+
+        intent.putExtra(
+                "group_name",
+                groupName
+        );
+
+        startActivity(intent);
+    }
+
     private void initViews() {
+
         btnBack = findViewById(R.id.btnBack);
+
         tvChName = findViewById(R.id.chName);
         tvChSub = findViewById(R.id.chSub);
         tvChAv = findViewById(R.id.chAv);
+
         btnMic = findViewById(R.id.micBtn);
+
         etTxt = findViewById(R.id.txtInput);
-        rvMessages = findViewById(R.id.chatRecyclerView);
 
-        btnMic.setImageResource(android.R.drawable.ic_btn_speak_now);
+        rvMessages =
+                findViewById(R.id.chatRecyclerView);
 
-        rvMessages.setLayoutManager(new LinearLayoutManager(this));
+        btnMic.setImageResource(
+                android.R.drawable.ic_btn_speak_now
+        );
 
-        messageAdapter = new MessageAdapter(messageList, new MessageAdapter.OnMessageActionListener() {
-            @Override
-            public void onDeleteMessage(Message message, int position) {
-                deleteMessage(message, position);
-            }
+        rvMessages.setLayoutManager(
+                new LinearLayoutManager(this)
+        );
 
-            @Override
-            public void onDownloadAudio(Message message) {
-                downloadAudioFile(message.getAudioPath());
-            }
-        });
+        messageAdapter =
+                new MessageAdapter(
+                        messageList,
+                        new MessageAdapter.OnMessageActionListener() {
+
+                            @Override
+                            public void onDeleteMessage(
+                                    Message message,
+                                    int position) {
+
+                                deleteMessage(
+                                        message,
+                                        position
+                                );
+                            }
+
+                            @Override
+                            public void onDownloadAudio(
+                                    Message message) {
+
+                                downloadAudioFile(
+                                        message.getAudioPath()
+                                );
+                            }
+                        }
+                );
+
         rvMessages.setAdapter(messageAdapter);
     }
 
     private void setupListeners() {
-        btnBack.setOnClickListener(v -> finish());
 
-        etTxt.setOnEditorActionListener((v, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_SEND) {
-                send();
-                return true;
-            }
-            return false;
+        /*
+         * Flecha verde:
+         * siempre vuelve a MainActivity.
+         */
+        btnBack.setOnClickListener(v -> {
+
+            Intent intent =
+                    new Intent(
+                            ChatActivity.this,
+                            MainActivity.class
+                    );
+
+            intent.setFlags(
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP
+            );
+
+            startActivity(intent);
+            finish();
         });
 
+        etTxt.setOnEditorActionListener(
+                (v, actionId, event) -> {
+
+                    if (actionId == EditorInfo.IME_ACTION_SEND) {
+                        send();
+                        return true;
+                    }
+
+                    return false;
+                }
+        );
+
         btnMic.setOnClickListener(v -> {
-            String text = etTxt.getText().toString().trim();
+
+            String text =
+                    etTxt.getText()
+                            .toString()
+                            .trim();
+
             if (!text.isEmpty()) {
                 send();
             } else {
@@ -175,184 +345,460 @@ public class ChatActivity extends AppCompatActivity {
             }
         });
 
-        etTxt.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+        etTxt.addTextChangedListener(
+                new TextWatcher() {
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (s.toString().trim().length() > 0) {
-                    btnMic.setImageResource(android.R.drawable.ic_menu_send);
-                } else {
-                    btnMic.setImageResource(android.R.drawable.ic_btn_speak_now);
+                    @Override
+                    public void beforeTextChanged(
+                            CharSequence s,
+                            int start,
+                            int count,
+                            int after) {
+                    }
+
+                    @Override
+                    public void onTextChanged(
+                            CharSequence s,
+                            int start,
+                            int before,
+                            int count) {
+
+                        if (s.toString()
+                                .trim()
+                                .length() > 0) {
+
+                            btnMic.setImageResource(
+                                    android.R.drawable.ic_menu_send
+                            );
+
+                        } else {
+
+                            btnMic.setImageResource(
+                                    android.R.drawable.ic_btn_speak_now
+                            );
+                        }
+                    }
+
+                    @Override
+                    public void afterTextChanged(
+                            Editable s) {
+                    }
                 }
-            }
-
-            @Override public void afterTextChanged(Editable s) {}
-        });
+        );
     }
 
     private void loadMessages() {
-        if (contactPhone == null || contactPhone.isEmpty()) return;
-        SharedPreferences prefs = getSharedPreferences("starssenger_prefs", MODE_PRIVATE);
-        String json = prefs.getString("chat_messages_" + contactPhone, null);
+
+        String key = chatKey();
+
+        if (key.isEmpty()) return;
+
+        SharedPreferences prefs =
+                getSharedPreferences(
+                        "starssenger_prefs",
+                        MODE_PRIVATE
+                );
+
+        String json =
+                prefs.getString(
+                        "chat_messages_" + key,
+                        null
+                );
 
         if (json != null) {
+
             Gson gson = new Gson();
-            Type type = new TypeToken<ArrayList<Message>>() {}.getType();
-            List<Message> saved = gson.fromJson(json, type);
+
+            Type type =
+                    new TypeToken<ArrayList<Message>>() {
+                    }.getType();
+
+            List<Message> saved =
+                    gson.fromJson(json, type);
 
             if (saved != null) {
+
                 messageList.clear();
 
                 for (Message msg : saved) {
-                    if (msg.getType() == Message.TYPE_TEXT && isEncrypted(msg.getText())) {
-                        String decryptedText = decryptText(msg.getText(), msg.isSentByMe());
+
+                    if (msg.getType() ==
+                            Message.TYPE_TEXT &&
+                            isEncrypted(msg.getText())) {
+
+                        String decryptedText =
+                                decryptText(
+                                        msg.getText(),
+                                        msg.isSentByMe()
+                                );
+
                         msg.setText(decryptedText);
                     }
+
                     messageList.add(msg);
                 }
 
                 messageAdapter.notifyDataSetChanged();
+
                 if (!messageList.isEmpty()) {
-                    rvMessages.scrollToPosition(messageList.size() - 1);
+
+                    rvMessages.scrollToPosition(
+                            messageList.size() - 1
+                    );
                 }
             }
         }
     }
 
     private void saveMessages() {
-        if (contactPhone == null || contactPhone.isEmpty()) return;
-        SharedPreferences prefs = getSharedPreferences("starssenger_prefs", MODE_PRIVATE);
+
+        String key = chatKey();
+
+        if (key.isEmpty()) return;
+
+        SharedPreferences prefs =
+                getSharedPreferences(
+                        "starssenger_prefs",
+                        MODE_PRIVATE
+                );
+
         Gson gson = new Gson();
 
-        List<Message> encryptedList = new ArrayList<>();
+        List<Message> encryptedList =
+                new ArrayList<>();
+
         for (Message msg : messageList) {
-            if (msg.getType() == Message.TYPE_TEXT && msg.getText() != null) {
-                String textToSave = isEncrypted(msg.getText()) ? msg.getText() : encryptText(msg.getText());
-                Message encMsg = new Message(msg.getId(), textToSave, msg.getAudioPath(), msg.getType(), msg.isSentByMe());
+
+            if (msg.getType() ==
+                    Message.TYPE_TEXT &&
+                    msg.getText() != null) {
+
+                String textToSave =
+                        isEncrypted(msg.getText())
+                                ? msg.getText()
+                                : encryptText(msg.getText());
+
+                Message encMsg =
+                        new Message(
+                                msg.getId(),
+                                textToSave,
+                                msg.getAudioPath(),
+                                msg.getType(),
+                                msg.isSentByMe()
+                        );
+
                 encryptedList.add(encMsg);
+
             } else {
+
                 encryptedList.add(msg);
             }
         }
 
-        String json = gson.toJson(encryptedList);
-        prefs.edit().putString("chat_messages_" + contactPhone, json).apply();
+        String json =
+                gson.toJson(encryptedList);
+
+        prefs.edit()
+                .putString(
+                        "chat_messages_" + key,
+                        json
+                )
+                .apply();
     }
 
     private String encryptText(String plainText) {
-        if (contactPublicKeyHex == null || contactPublicKeyHex.isEmpty() || mySecretKeyHex.isEmpty()) {
-            Toast.makeText(this, "Faltan claves criptográficas para enviar", Toast.LENGTH_SHORT).show();
+
+        // En grupos no hay cifrado 1 a 1.
+        if (isGroup) {
             return plainText;
         }
+
+        if (contactPublicKeyHex == null ||
+                contactPublicKeyHex.isEmpty() ||
+                mySecretKeyHex.isEmpty()) {
+
+            Toast.makeText(
+                    this,
+                    "Faltan claves criptográficas para enviar",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return plainText;
+        }
+
         try {
-            byte[] nonce = sodium.nonce(Box.NONCEBYTES);
-            String nonceHex = sodium.toHexStr(nonce);
 
-            Key recipientPubKey = Key.fromHexString(contactPublicKeyHex);
-            Key myPrivKey = Key.fromHexString(mySecretKeyHex);
+            byte[] nonce =
+                    sodium.nonce(Box.NONCEBYTES);
 
-            byte[] messageBytes = plainText.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-            byte[] cipherBytes = new byte[messageBytes.length + Box.SEALBYTES];
+            String nonceHex =
+                    sodium.toHexStr(nonce);
 
-            boolean success = sodium.cryptoBoxEasy(cipherBytes, messageBytes, messageBytes.length, nonce, recipientPubKey.getAsBytes(), myPrivKey.getAsBytes());
+            Key recipientPubKey =
+                    Key.fromHexString(
+                            contactPublicKeyHex
+                    );
+
+            Key myPrivKey =
+                    Key.fromHexString(
+                            mySecretKeyHex
+                    );
+
+            byte[] messageBytes =
+                    plainText.getBytes(
+                            java.nio.charset.StandardCharsets.UTF_8
+                    );
+
+            byte[] cipherBytes =
+                    new byte[
+                            messageBytes.length +
+                                    Box.SEALBYTES
+                            ];
+
+            boolean success =
+                    sodium.cryptoBoxEasy(
+                            cipherBytes,
+                            messageBytes,
+                            messageBytes.length,
+                            nonce,
+                            recipientPubKey.getAsBytes(),
+                            myPrivKey.getAsBytes()
+                    );
 
             if (success) {
-                String cipherHex = sodium.toHexStr(cipherBytes);
-                return "ENC:" + nonceHex + ":" + cipherHex;
+
+                String cipherHex =
+                        sodium.toHexStr(cipherBytes);
+
+                return "ENC:" +
+                        nonceHex +
+                        ":" +
+                        cipherHex;
+
             } else {
+
                 return plainText;
             }
+
         } catch (Exception e) {
+
             e.printStackTrace();
+
             return plainText;
         }
     }
 
-    private String decryptText(String encryptedFormattedText, boolean sentByMe) {
+    private String decryptText(
+            String encryptedFormattedText,
+            boolean sentByMe) {
+
+        if (isGroup) {
+            return encryptedFormattedText;
+        }
+
         try {
-            String[] parts = encryptedFormattedText.split(":");
-            if (parts.length != 3 || !parts[0].equals("ENC")) return encryptedFormattedText;
 
-            byte[] nonce = sodium.toBin(parts[1]);
-            byte[] cipherBytes = sodium.toBin(parts[2]);
+            String[] parts =
+                    encryptedFormattedText.split(":");
 
-            String pubKeyHex = sentByMe ? myPublicKeyHex : contactPublicKeyHex;
+            if (parts.length != 3 ||
+                    !parts[0].equals("ENC")) {
 
-            Key senderPubKey = Key.fromHexString(pubKeyHex);
-            Key myPrivKey = Key.fromHexString(mySecretKeyHex);
+                return encryptedFormattedText;
+            }
 
-            byte[] decryptedBytes = new byte[cipherBytes.length - Box.SEALBYTES];
+            byte[] nonce =
+                    sodium.toBin(parts[1]);
 
-            boolean success = sodium.cryptoBoxOpenEasy(decryptedBytes, cipherBytes, cipherBytes.length, nonce, senderPubKey.getAsBytes(), myPrivKey.getAsBytes());
+            byte[] cipherBytes =
+                    sodium.toBin(parts[2]);
+
+            String pubKeyHex =
+                    sentByMe
+                            ? myPublicKeyHex
+                            : contactPublicKeyHex;
+
+            Key senderPubKey =
+                    Key.fromHexString(pubKeyHex);
+
+            Key myPrivKey =
+                    Key.fromHexString(mySecretKeyHex);
+
+            byte[] decryptedBytes =
+                    new byte[
+                            cipherBytes.length -
+                                    Box.SEALBYTES
+                            ];
+
+            boolean success =
+                    sodium.cryptoBoxOpenEasy(
+                            decryptedBytes,
+                            cipherBytes,
+                            cipherBytes.length,
+                            nonce,
+                            senderPubKey.getAsBytes(),
+                            myPrivKey.getAsBytes()
+                    );
 
             if (success) {
-                return new String(decryptedBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+                return new String(
+                        decryptedBytes,
+                        java.nio.charset.StandardCharsets.UTF_8
+                );
+
             } else {
+
                 return "[Error al descifrar mensaje]";
             }
+
         } catch (Exception e) {
+
             e.printStackTrace();
+
             return "[Error al descifrar mensaje]";
         }
     }
 
     private boolean isEncrypted(String text) {
-        return text != null && text.startsWith("ENC:");
+
+        return text != null &&
+                text.startsWith("ENC:");
     }
 
     private void send() {
-        String text = etTxt.getText().toString().trim();
+
+        String text =
+                etTxt.getText()
+                        .toString()
+                        .trim();
+
         if (!text.isEmpty()) {
-            Message message = new Message(UUID.randomUUID().toString(), text, null, Message.TYPE_TEXT, true);
+
+            Message message =
+                    new Message(
+                            UUID.randomUUID().toString(),
+                            text,
+                            null,
+                            Message.TYPE_TEXT,
+                            true
+                    );
+
             messageAdapter.addMessage(message);
+
             saveMessages();
+
             etTxt.setText("");
-            rvMessages.scrollToPosition(messageList.size() - 1);
+
+            rvMessages.scrollToPosition(
+                    messageList.size() - 1
+            );
         }
     }
 
     @Override
     protected void onDestroy() {
+
         super.onDestroy();
+
         if (messageAdapter != null) {
             messageAdapter.releaseMediaPlayer();
         }
     }
 
-    private void downloadAudioFile(String sourceFilePath) {
+    private void downloadAudioFile(
+            String sourceFilePath) {
+
         if (sourceFilePath == null) return;
 
-        File sourceFile = new File(sourceFilePath);
+        File sourceFile =
+                new File(sourceFilePath);
+
         if (!sourceFile.exists()) {
-            Toast.makeText(this, "El archivo de audio no existe", Toast.LENGTH_SHORT).show();
+
+            Toast.makeText(
+                    this,
+                    "El archivo de audio no existe",
+                    Toast.LENGTH_SHORT
+            ).show();
+
             return;
         }
 
         try {
-            File downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS);
-            File destFile = new File(downloadsDir, "Audio_" + System.currentTimeMillis() + ".wav");
 
-            try (FileInputStream in = new FileInputStream(sourceFile);
-                 FileOutputStream out = new FileOutputStream(destFile)) {
+            File downloadsDir =
+                    android.os.Environment
+                            .getExternalStoragePublicDirectory(
+                                    android.os.Environment
+                                            .DIRECTORY_DOWNLOADS
+                            );
 
-                byte[] buffer = new byte[1024];
+            File destFile =
+                    new File(
+                            downloadsDir,
+                            "Audio_" +
+                                    System.currentTimeMillis() +
+                                    ".wav"
+                    );
+
+            try (
+                    FileInputStream in =
+                            new FileInputStream(sourceFile);
+
+                    FileOutputStream out =
+                            new FileOutputStream(destFile)
+            ) {
+
+                byte[] buffer =
+                        new byte[1024];
+
                 int read;
-                while ((read = in.read(buffer)) != -1) {
-                    out.write(buffer, 0, read);
+
+                while ((read =
+                        in.read(buffer)) != -1) {
+
+                    out.write(
+                            buffer,
+                            0,
+                            read
+                    );
                 }
             }
 
-            Toast.makeText(this, "Audio guardado en Descargas", Toast.LENGTH_LONG).show();
+            Toast.makeText(
+                    this,
+                    "Audio guardado en Descargas",
+                    Toast.LENGTH_LONG
+            ).show();
+
         } catch (Exception e) {
+
             e.printStackTrace();
-            Toast.makeText(this, "Error al descargar el audio", Toast.LENGTH_SHORT).show();
+
+            Toast.makeText(
+                    this,
+                    "Error al descargar el audio",
+                    Toast.LENGTH_SHORT
+            ).show();
         }
     }
 
     private void toggleRec() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO_PERMISSION);
+
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.RECORD_AUDIO
+        ) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{
+                            Manifest.permission.RECORD_AUDIO
+                    },
+                    REQUEST_RECORD_AUDIO_PERMISSION
+            );
+
             return;
         }
 
@@ -364,58 +810,159 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void startRecording() {
-        audioFilePath = new File(getFilesDir(), UUID.randomUUID().toString() + ".wav").getAbsolutePath();
-        recorderHelper.startRecording(audioFilePath);
+
+        audioFilePath =
+                new File(
+                        getFilesDir(),
+                        UUID.randomUUID().toString() +
+                                ".wav"
+                ).getAbsolutePath();
+
+        recorderHelper.startRecording(
+                audioFilePath
+        );
+
         isRecording = true;
-        btnMic.setImageResource(android.R.drawable.ic_media_pause);
-        Toast.makeText(this, "Grabando audio...", Toast.LENGTH_SHORT).show();
+
+        btnMic.setImageResource(
+                android.R.drawable.ic_media_pause
+        );
+
+        Toast.makeText(
+                this,
+                "Grabando audio...",
+                Toast.LENGTH_SHORT
+        ).show();
     }
 
     private void stopRecordingAndSend() {
+
         if (isRecording) {
-            String encryptedPath = audioFilePath.replace(".wav", ".enc");
 
-            Key key = recorderHelper.generateSecretKey();
-            byte[] nonce = recorderHelper.generateNonce();
+            String encryptedPath =
+                    audioFilePath.replace(
+                            ".wav",
+                            ".enc"
+                    );
 
-            recorderHelper.stopRecording(audioFilePath, key, nonce, encryptedPath);
+            Key key =
+                    recorderHelper.generateSecretKey();
+
+            byte[] nonce =
+                    recorderHelper.generateNonce();
+
+            recorderHelper.stopRecording(
+                    audioFilePath,
+                    key,
+                    nonce,
+                    encryptedPath
+            );
+
             isRecording = false;
 
-            btnMic.setImageResource(android.R.drawable.ic_btn_speak_now);
+            btnMic.setImageResource(
+                    android.R.drawable.ic_btn_speak_now
+            );
 
-            File encryptedFile = new File(encryptedPath);
-            if (encryptedFile.exists() && encryptedFile.length() > 0) {
-                Message message = new Message(UUID.randomUUID().toString(), null, encryptedPath, Message.TYPE_AUDIO, true);
+            File encryptedFile =
+                    new File(encryptedPath);
+
+            if (encryptedFile.exists() &&
+                    encryptedFile.length() > 0) {
+
+                Message message =
+                        new Message(
+                                UUID.randomUUID().toString(),
+                                null,
+                                encryptedPath,
+                                Message.TYPE_AUDIO,
+                                true
+                        );
+
                 messageAdapter.addMessage(message);
+
                 saveMessages();
-                rvMessages.scrollToPosition(messageList.size() - 1);
+
+                rvMessages.scrollToPosition(
+                        messageList.size() - 1
+                );
+
             } else {
-                Toast.makeText(this, "El audio grabado está vacío o falló el cifrado", Toast.LENGTH_SHORT).show();
+
+                Toast.makeText(
+                        this,
+                        "El audio grabado está vacío o falló el cifrado",
+                        Toast.LENGTH_SHORT
+                ).show();
             }
         }
     }
 
-    private void deleteMessage(Message message, int position) {
+    private void deleteMessage(
+            Message message,
+            int position) {
+
         new AlertDialog.Builder(this)
                 .setTitle("Eliminar mensaje")
-                .setMessage("¿Estás seguro de eliminar este mensaje?")
-                .setPositiveButton("Eliminar", (dialog, which) -> {
-                    if (message.getType() == Message.TYPE_AUDIO && message.getAudioPath() != null) {
-                        File file = new File(message.getAudioPath());
-                        if (file.exists()) file.delete();
-                    }
-                    messageAdapter.removeMessage(position);
-                    saveMessages();
-                    Toast.makeText(this, "Mensaje eliminado", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Cancelar", null)
+                .setMessage(
+                        "¿Estás seguro de eliminar este mensaje?"
+                )
+                .setPositiveButton(
+                        "Eliminar",
+                        (dialog, which) -> {
+
+                            if (message.getType() ==
+                                    Message.TYPE_AUDIO &&
+                                    message.getAudioPath() != null) {
+
+                                File file =
+                                        new File(
+                                                message.getAudioPath()
+                                        );
+
+                                if (file.exists()) {
+                                    file.delete();
+                                }
+                            }
+
+                            messageAdapter.removeMessage(
+                                    position
+                            );
+
+                            saveMessages();
+
+                            Toast.makeText(
+                                    this,
+                                    "Mensaje eliminado",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                )
+                .setNegativeButton(
+                        "Cancelar",
+                        null
+                )
                 .show();
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION && grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+    public void onRequestPermissionsResult(
+            int requestCode,
+            @NonNull String[] permissions,
+            @NonNull int[] grantResults) {
+
+        super.onRequestPermissionsResult(
+                requestCode,
+                permissions,
+                grantResults
+        );
+
+        if (requestCode ==
+                REQUEST_RECORD_AUDIO_PERMISSION &&
+                grantResults.length > 0 &&
+                grantResults[0] ==
+                        PackageManager.PERMISSION_GRANTED) {
+
             toggleRec();
         }
     }

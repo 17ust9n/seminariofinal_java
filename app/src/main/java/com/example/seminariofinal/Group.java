@@ -9,6 +9,13 @@ public class Group {
     private String name;
     private List<Contact> members;
 
+    // 🛠️ AGREGADO: Constructor vacío obligatorio requerido por GSON y Java
+    public Group() {
+        this.id = UUID.randomUUID().toString(); // Garantiza que siempre tenga una ID única
+        this.members = new ArrayList<>();
+    }
+
+    // Tu constructor original con parámetros se mantiene intacto:
     public Group(String name, List<Contact> members) {
         this.id = UUID.randomUUID().toString();
         this.name = name;

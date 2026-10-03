@@ -65,30 +65,36 @@
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 
-        <!-- 6. LLAMADAS DE VOZ Y VIDEO -->
+        <!-- 5. CHAT / CONVERSACIÓN -->
+        <activity
+            android:name=".GroupActivity"
+            android:exported="false"
+            android:parentActivityName=".ChatActivity" />
+
+        <!-- 7. LLAMADAS DE VOZ Y VIDEO -->
         <activity
             android:name=".CallActivity"
             android:exported="false" />
 
-        <!-- 7. EDITAR PERFIL -->
+        <!-- 8. EDITAR PERFIL -->
         <activity
             android:name=".EditProfileActivity"
             android:exported="false"
             android:parentActivityName=".ProfileActivity" />
 
-        <!-- 8. AJUSTES Y SEGURIDAD -->
+        <!-- 9. AJUSTES Y SEGURIDAD -->
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:parentActivityName=".ProfileActivity" />
 
-        <!-- 9. ACERCA -->
+        <!-- 10. ACERCA -->
         <activity
             android:name=".AboutActivity"
             android:exported="false"
             android:parentActivityName=".AboutActivity" />
 
-        <!-- 10. TERMINOS Y CONDICIONES -->
+        <!-- 11. TERMINOS Y CONDICIONES -->
         <activity
             android:name=".TermsActivity"
             android:exported="false"

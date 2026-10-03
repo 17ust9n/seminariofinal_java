@@ -11,21 +11,65 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Nuevo Grupo"
+        android:text="Crear Nuevo Grupo"
         android:textColor="@color/white"
         android:textSize="18sp"
         android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Nombre del Grupo"
+        android:textColor="@color/mut_text"
+        android:textSize="12sp" />
 
     <EditText
         android:id="@+id/etGName"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="6dp"
         android:background="@drawable/bg_input_dark"
-        android:hint="Nombre del grupo"
+        android:hint="Ej: Amigos, Familia, Trabajo..."
+        android:inputType="textCapSentences"
         android:paddingHorizontal="12dp"
         android:textColor="@color/white"
-        android:textColorHint="@color/mut_text" />
+        android:textColorHint="@color/mut_text"
+        android:textSize="14sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Seleccionar Miembros"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <ScrollView
+        android:id="@+id/svGroupMembers"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_members_box"
+        android:padding="5dp">
+
+        <LinearLayout
+            android:id="@+id/llGroupMembers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <TextView
+        android:id="@+id/tvGroupEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="No tenés contactos guardados para añadir."
+        android:textColor="@color/mut_text"
+        android:textSize="13sp"
+        android:visibility="gone" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -47,7 +91,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:text="Crear"
+            android:text="👥 Crear Grupo"
             android:textColor="@color/white"
             app:backgroundTint="@color/green_accent" />
     </LinearLayout>

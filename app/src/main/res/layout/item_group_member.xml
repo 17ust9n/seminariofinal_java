@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="10dp"
+    android:paddingHorizontal="16dp"
+    android:background="?attr/selectableItemBackground">
+
+    <!-- Avatar / Burbuja Circular -->
+    <TextView
+        android:id="@+id/tvMemberAvatar"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:gravity="center"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:background="@android:color/darker_gray" />
+
+    <!-- Bloque Central de Textos (Nombre y Teléfono) -->
+    <!-- 🛠️ EL TRUCO DEL PESO: El layout_weight="1" estira este bloque hacia la derecha,
+         empujando de forma exacta los botones de acción contra el borde de la pantalla -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="14dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvMemberName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvMemberPhone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- 🛠️ SOLUCIÓN AL LINKING FAILED: Añadido el contenedor horizontal vacío
+         para recibir simétricamente los botones de Modificar y Eliminar al lado del nombre -->
+    <LinearLayout
+        android:id="@+id/llActionsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center_vertical" />
+
+    <!-- Checkbox nativo oculto para compatibilidad de selección -->
+    <CheckBox
+        android:id="@+id/cbMember"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
+
+</LinearLayout>

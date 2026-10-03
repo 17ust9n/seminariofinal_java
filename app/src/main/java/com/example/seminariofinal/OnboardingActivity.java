@@ -36,6 +36,8 @@ public class OnboardingActivity extends AppCompatActivity {
     private Button btnEnter;
     private TextView tvError;
 
+    private EditText etName;
+
     private int selectedSecurityLevel = 0;
 
     @Override
@@ -49,6 +51,7 @@ public class OnboardingActivity extends AppCompatActivity {
     }
 
     private void initViews() {
+        etName = findViewById(R.id.etName);
         etPhone = findViewById(R.id.etPhone);
         btnSecNormal = findViewById(R.id.btnSecNormal);
         btnSecBlindado = findViewById(R.id.btnSecBlindado);
@@ -104,7 +107,18 @@ public class OnboardingActivity extends AppCompatActivity {
     private void saveMe() {
         hideKeyboard();
 
+        String name = etName.getText().toString().trim();
         String phoneNumber = etPhone.getText().toString().trim();
+
+        if (TextUtils.isEmpty(name)) {
+            showError("Ingresa tu nombre");
+            return;
+        }
+
+        if (name.length() < 2) {
+            showError("El nombre es muy corto");
+            return;
+        }
 
         if (TextUtils.isEmpty(phoneNumber)) {
             showError("Ingresa un número válido con código de país");
@@ -146,6 +160,7 @@ public class OnboardingActivity extends AppCompatActivity {
                 // 3. Guardar estado general de la aplicación
                 SharedPreferences preferences = getSharedPreferences("starssenger_prefs", Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = preferences.edit();
+                editor.putString("user_name", name);
                 editor.putString("user_phone", phoneNumber);
                 editor.putInt("security_level", selectedSecurityLevel);
                 editor.putBoolean("is_logged_in", true);
