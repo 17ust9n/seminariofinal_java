@@ -201,21 +201,8 @@ public class ChatActivity extends AppCompatActivity {
             );
         }
 
-        int count = 0;
-
-        for (Group g : GroupRepository.load(this)) {
-
-            if (groupName.equals(g.getName())) {
-
-                count = (g.getMembers() != null)
-                        ? g.getMembers().size()
-                        : 0;
-
-                break;
-            }
-        }
-
-        tvChSub.setText(count + " miembro(s)");
+        // En un grupo no tiene sentido mostrar "en línea"
+        tvChSub.setVisibility(View.GONE);
 
         View.OnClickListener openDetail =
                 v -> openGroupDetail();
@@ -225,7 +212,6 @@ public class ChatActivity extends AppCompatActivity {
         }
 
         tvChName.setOnClickListener(openDetail);
-        tvChSub.setOnClickListener(openDetail);
 
         etTxt.setHint("Mensaje grupal…");
     }

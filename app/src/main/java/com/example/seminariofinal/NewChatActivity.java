@@ -389,7 +389,7 @@ public class NewChatActivity extends AppCompatActivity {
             tvAvatar.setBackground(circle);
 
             tvName.setText(g.getName());
-            tvPhone.setText(g.getMembers() != null ? g.getMembers().size() + " miembro(s)" : "0 miembros");
+            tvPhone.setText("Sala de chat grupal");
             if (cb != null) cb.setVisibility(View.GONE);
 
             LinearLayout actionsLayout = row.findViewById(R.id.llActionsContainer);
